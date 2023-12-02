@@ -6,11 +6,14 @@
 #include <netinet/in.h> // for sockaddr_in and inet_ntoa()
 #include <arpa/inet.h>  // for inet_ntop()
 #include <unistd.h>     // for close()
+#include <pthread.h>
+#include <sys/time.h>
 #include "error_handling.h"
 #include "client_handling.h"
 
-// Maximum outstanding connection requests
-static const int MAXPENDING = 5;
+static const int MAXPENDING = 5;    // Maximum outstanding connection requests
+static const int TIMEOUT = 30;      // Timeout in seconds
+static const int TIMEOUT_USEC = 0;  // Timeout in microseconds
 
 struct sockaddr_in get_sockAddr_in(int port) {
   struct sockaddr_in servAddr; // Local address
@@ -51,8 +54,10 @@ int main (int argc, char *argv[]) {
 
     // Wait for a client to connect
     int clntSock = accept(servSock, (struct sockaddr *) &clntAddr, &clntAddrLen);
-    if (clntSock < 0)
-      DieWithSystemMessage("accept() failed");
+    if (clntSock < 0) {
+      perror("accept() failed");
+      continue;
+    }
 
     // clntSock is connected to a client!
     char clntName[INET_ADDRSTRLEN]; // String to contain client address
@@ -61,6 +66,28 @@ int main (int argc, char *argv[]) {
     else
       puts("Unable to get client address");
 
-    handleClient(clntSock);
+    struct timeval timeout;
+    timeout.tv_sec = TIMEOUT;
+    timeout.tv_usec = TIMEOUT_USEC;
+
+    if (setsockopt(clntSock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0) {
+      perror("setsockopt failed\n");
+      close(clntSock);
+      continue;
+    }
+
+    pthread_t threadID;
+    int returnValue = pthread_create(&threadID, NULL, handleClient,(void *) &clntSock);
+    if (returnValue != 0) {
+      perror("pthread_create() failed");
+      close(clntSock);
+      continue;
+    }
+
+    if (pthread_detach(threadID) != 0) {
+      perror("pthread_detach() failed");
+      close(clntSock);
+      continue;
+    }
   }
 }
