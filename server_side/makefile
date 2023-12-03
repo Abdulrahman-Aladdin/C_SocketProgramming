@@ -2,7 +2,7 @@ CC = gcc
 CFLAGS = -Wall -Wextra
 
 # Source files
-SRCS = server.c error_handling.c client_handling.c
+SRCS = server.c error_handling.c client_handling.c request_handling.c
 
 # Object files
 OBJS = $(SRCS:.c=.o)

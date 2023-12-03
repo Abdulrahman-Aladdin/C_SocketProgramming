@@ -12,7 +12,7 @@
 #include "client_handling.h"
 
 static const int MAXPENDING = 5;    // Maximum outstanding connection requests
-static const int TIMEOUT = 30;      // Timeout in seconds
+static const int TIMEOUT = 3000;      // Timeout in seconds
 static const int TIMEOUT_USEC = 0;  // Timeout in microseconds
 
 struct sockaddr_in get_sockAddr_in(int port) {
