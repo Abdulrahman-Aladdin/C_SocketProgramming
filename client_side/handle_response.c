@@ -85,6 +85,7 @@ void handle_get_response(char *response, char *file_name, int sock)
         else if (numBytes == 0)
             DieWithUserMessage("recv()", "connection closed prematurely");
 
+        totalBytesRcvd += numBytes;
         fwrite(buffer, 1, numBytes, fp);
     }
     // here means that we've successfully recieved the whole file
