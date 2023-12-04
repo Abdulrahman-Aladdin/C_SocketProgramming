@@ -9,13 +9,9 @@
 #include "error_handling.h"
 #include "request_handling.h"
 #include "params_struct.h"
+#include "utils.h"
 
 #define BUFFER_SIZE 16384
-
-void decrement_active_clients(int *activeClients) {
-  (*activeClients)--;
-  printf("active clients -> %d\n", *activeClients);
-}
 
 void *handleClient(void *args) {
   struct params *params = (struct params *)args;
@@ -31,6 +27,7 @@ void *handleClient(void *args) {
   if (result < 0) {
     perror("select() failed");
     decrement_active_clients(params->activeClients);
+    update_timeout(params->timeout, *(params->activeClients));
     close(clntSock);
     return NULL;
   }
@@ -38,6 +35,7 @@ void *handleClient(void *args) {
   if (result == 0) {
     printf("Client %d timed out\n", clntSock);
     decrement_active_clients(params->activeClients);
+    update_timeout(params->timeout, *(params->activeClients));
     close(clntSock);
     return NULL;
   }
@@ -46,6 +44,7 @@ void *handleClient(void *args) {
   
   if (numBytesRcvd < 0) {
     decrement_active_clients(params->activeClients);
+    update_timeout(params->timeout, *(params->activeClients));
     perror("recv() failed");
     close(clntSock);
     return NULL;
@@ -54,6 +53,7 @@ void *handleClient(void *args) {
   if (numBytesRcvd == 0) {
     printf("Client %d closed connection\n", clntSock);
     decrement_active_clients(params->activeClients);
+    update_timeout(params->timeout, *(params->activeClients));
     close(clntSock);
     return NULL;
   }
@@ -99,6 +99,7 @@ void *handleClient(void *args) {
     }
   }
   decrement_active_clients(params->activeClients);
+  update_timeout(params->timeout, *(params->activeClients));
   close(clntSock); // Close client socket
   return NULL;
 }

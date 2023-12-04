@@ -11,11 +11,9 @@
 #include "error_handling.h"
 #include "client_handling.h"
 #include "params_struct.h"
+#include "utils.h"
 
 static const int MAXPENDING = 5;    // Maximum outstanding connection requests
-static const int MAX_TIMEOUT = 200; // Timeout in seconds
-static const int MIN_TIMEOUT = 30;       // Timeout in seconds
-static const int TIMEOUT_USEC = 0;  // Timeout in microseconds
 
 struct sockaddr_in get_sockAddr_in(int port) {
   struct sockaddr_in servAddr; // Local address
@@ -24,21 +22,6 @@ struct sockaddr_in get_sockAddr_in(int port) {
   servAddr.sin_addr.s_addr = htonl(INADDR_ANY); // Any incoming interface
   servAddr.sin_port = htons(port); // Local port
   return servAddr;
-}
-
-void update_timeout(struct timeval *timeout, int activeClients) {
-  if (activeClients < 2) {
-    timeout->tv_sec = MAX_TIMEOUT;
-    timeout->tv_usec = TIMEOUT_USEC;
-  } else {
-    timeout->tv_sec = MAX_TIMEOUT / activeClients;
-    timeout->tv_usec = 0;
-  }
-  if (timeout->tv_sec < MIN_TIMEOUT) {
-    timeout->tv_sec = MIN_TIMEOUT;
-    timeout->tv_usec = TIMEOUT_USEC;
-  }
-  printf("...udated timeout -> %ld sec.\n", timeout->tv_sec);
 }
 
 int main (int argc, char *argv[]) {
