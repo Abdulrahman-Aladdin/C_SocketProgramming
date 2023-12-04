@@ -6,7 +6,7 @@
 #include "send_request.h"
 #include "error_handling.h"
 
-#define BUFFER_SIZE 4096
+#define BUFFER_SIZE 1024
 
 // Function to send a GET request to the server
 void send_get_request(int socket, const char *file_path)
@@ -30,61 +30,73 @@ void send_get_request(int socket, const char *file_path)
     // here means that we've successfully sent our GET request
 }
 
-char *get_file_content(const char *filePath)
+// fuction to send the Post request
+void send_post_request(int socket, const char *filename)
 {
-    FILE *file = fopen(filePath, "r");
+    // Determine content type based on file extension
+    const char *content_type;
+    if (strstr(filename, ".html") || strstr(filename, ".htm"))
+    {
+        content_type = "text/html";
+    }
+    else if (strstr(filename, ".txt"))
+    {
+        content_type = "text/plain";
+    }
+    else
+    {
+        content_type = "image/jpeg";
+    }
+
+    // Open the file
+    FILE *file = fopen(filename, "rb");
     if (file == NULL)
     {
-        DieWithUserMessage("get_file_content()", "Error while openning the file");
+        perror("Error opening file");
+        return;
     }
 
-    // Get the size of the file
+    // Determine the file size
     fseek(file, 0, SEEK_END);
-    long fileSize = ftell(file);
+    long file_size = ftell(file);
     fseek(file, 0, SEEK_SET);
 
-    // Allocate memory for the file content
-    char *fileContent = malloc(fileSize + 1); // +1 for null terminator
-    if (fileContent == NULL)
-    {
-        perror("Error allocating memory");
-        fclose(file);
-        exit(EXIT_FAILURE);
-    }
+    // Construct and send the HTTP POST request headers
+    char headers[BUFFER_SIZE];
+    snprintf(headers, sizeof(headers),
+             "POST /%s HTTP/1.1\r\n"
+             "Content-Type: %s\r\n"
+             "Content-Length: %ld\r\n"
+             "\r\n",
+             filename, content_type, file_size);
 
-    // Read the file content into the buffer
-    fread(fileContent, 1, fileSize, file);
-    fclose(file);
-
-    // Null-terminate the file content
-    fileContent[fileSize] = '\0';
-
-    return fileContent;
-}
-
-// Function to send a POST request to the server
-void send_post_request(int socket, const char *file_path)
-{
-    // it's pretty much as the previous function but here we include the content of the file that we need to
-    // send to the server
-
-    // let's get the coentents of the file first
-    char *file_content = get_file_content(file_path);
-
-    char post_request[BUFFER_SIZE + 100];
-    sprintf(post_request, "POST /%s HTTP/1.1\r\n\r\n%s", file_path, file_content);
-
-    // send the data through the socket and see how many bytes are exactly sent
-    ssize_t bytes_sent = send(socket, post_request, strlen(post_request), 0);
+    // the first send(the one that contains the header and the request line)
+    ssize_t bytes_sent = send(socket, headers, strlen(headers), 0);
 
     if (bytes_sent == -1)
     {
         DieWithSystemMessage("send() failed");
     }
 
-    if (bytes_sent != strlen(post_request))
+    if (bytes_sent != strlen(headers))
     {
         DieWithUserMessage("send()", "sent unexpected number of bytes");
     }
-    // here means that we've successfully sent our POST request
+
+    // Send the file content in chunks of 1024 bytes
+    char buffer[BUFFER_SIZE];
+    size_t bytes_read;
+
+    while ((bytes_read = fread(buffer, 1, sizeof(buffer), file)) > 0)
+    {
+        ssize_t bytes_sent = send(socket, buffer, bytes_read, 0);
+        if (bytes_sent == -1)
+        {
+            perror("Error sending file content");
+            break;
+        }
+    }
+
+    // Close the file
+    fclose(file);
 }

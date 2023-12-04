@@ -8,7 +8,7 @@
 #include "error_handling.h"
 #include "handle_response.h"
 
-#define BUFFER_SIZE 4096
+#define BUFFER_SIZE 1024
 
 struct sockaddr_in get_server_address(in_port_t portNumber, char *serverIPv4)
 {
@@ -72,23 +72,23 @@ int main(int argc, char *argv[])
     // and then check if the recieved amount of bytes is 0 or < 0
 
     // Send a GET request to the server
-    printf("Sending POST request...\n");
+    printf("Sending GET request...\n");
 
-    char *file_name = "index.html";
+    char *file_name = "index.png";
 
-    // send_get_request(sock, file_name);
-
-    send_post_request(sock, file_name);
+    send_get_request(sock, file_name);
 
     // Receive and print the server's response
     char buffer[BUFFER_SIZE] = {0};
 
     // if any message is recieved in the connection then print it and that's the server response
-    recv(sock, buffer, BUFFER_SIZE, 0);
+    size_t numBytes = recv(sock, buffer, BUFFER_SIZE, 0);
+
+    printf("data recieved size = %zu\n", numBytes);
 
     printf("Server response:\n%s", buffer);
 
-    handle_post_response(buffer, file_name);
+    handle_get_response(buffer, file_name, sock);
 
     close(sock);
     // here
