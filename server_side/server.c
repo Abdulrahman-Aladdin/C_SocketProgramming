@@ -10,9 +10,11 @@
 #include <sys/time.h>
 #include "error_handling.h"
 #include "client_handling.h"
+#include "params_struct.h"
 
 static const int MAXPENDING = 5;    // Maximum outstanding connection requests
-static const int TIMEOUT = 3000;      // Timeout in seconds
+static const int MAX_TIMEOUT = 200; // Timeout in seconds
+static const int MIN_TIMEOUT = 30;       // Timeout in seconds
 static const int TIMEOUT_USEC = 0;  // Timeout in microseconds
 
 struct sockaddr_in get_sockAddr_in(int port) {
@@ -22,6 +24,21 @@ struct sockaddr_in get_sockAddr_in(int port) {
   servAddr.sin_addr.s_addr = htonl(INADDR_ANY); // Any incoming interface
   servAddr.sin_port = htons(port); // Local port
   return servAddr;
+}
+
+void update_timeout(struct timeval *timeout, int activeClients) {
+  if (activeClients < 2) {
+    timeout->tv_sec = MAX_TIMEOUT;
+    timeout->tv_usec = TIMEOUT_USEC;
+  } else {
+    timeout->tv_sec = MAX_TIMEOUT / activeClients;
+    timeout->tv_usec = 0;
+  }
+  if (timeout->tv_sec < MIN_TIMEOUT) {
+    timeout->tv_sec = MIN_TIMEOUT;
+    timeout->tv_usec = TIMEOUT_USEC;
+  }
+  printf("...udated timeout -> %ld sec.\n", timeout->tv_sec);
 }
 
 int main (int argc, char *argv[]) {
@@ -43,6 +60,9 @@ int main (int argc, char *argv[]) {
   // Mark the socket so it will listen for incoming connections
   if (listen(servSock, MAXPENDING) < 0)
     DieWithSystemMessage("listen() failed");
+
+  int activeClients = 0;
+  struct timeval timeout;
 
   while (1) {
 
@@ -66,26 +86,28 @@ int main (int argc, char *argv[]) {
     else
       puts("Unable to get client address");
 
-    struct timeval timeout;
-    timeout.tv_sec = TIMEOUT;
-    timeout.tv_usec = TIMEOUT_USEC;
+    activeClients++;
+    printf("Active clients: %d\n", activeClients);
 
-    if (setsockopt(clntSock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0) {
-      perror("setsockopt failed\n");
-      close(clntSock);
-      continue;
-    }
+    update_timeout(&timeout, activeClients);
+
+    struct params *args = (struct params *) malloc(sizeof(struct params));
+    args->clntSock = clntSock;
+    args->timeout = &timeout;
+    args->activeClients = &activeClients;
 
     pthread_t threadID;
-    int returnValue = pthread_create(&threadID, NULL, handleClient,(void *) &clntSock);
+    int returnValue = pthread_create(&threadID, NULL, handleClient,(void *) args);
     if (returnValue != 0) {
       perror("pthread_create() failed");
+      activeClients--;
       close(clntSock);
       continue;
     }
 
     if (pthread_detach(threadID) != 0) {
       perror("pthread_detach() failed");
+      activeClients--;
       close(clntSock);
       continue;
     }

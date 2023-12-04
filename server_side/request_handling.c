@@ -23,7 +23,6 @@ void handleGET(int clntSock, char *buffer) {
     return;
   }
   send_data(clntSock, fp);
-  fclose(fp);
 }
 
 // Handle POST request
@@ -38,7 +37,6 @@ void handlePOST(int clntSock, char *buffer) {
     return;
   }
   write_data(clntSock, fp, buffer, filename);
-  fclose(fp);
 }
 
 
@@ -46,10 +44,26 @@ void handlePOST(int clntSock, char *buffer) {
 void send_data(int clntSock, FILE *fp) {
   char *msg = "HTTP/1.1 200 OK\r\n\r\n";
   send(clntSock, msg, strlen(msg), 0);
-  char line[BUFFER_SIZE];
-  while (fgets(line, BUFSIZ, fp) != NULL) {
-    send(clntSock, line, strlen(line), 0);
+
+  // determine file size
+  fseek(fp, 0L, SEEK_END);
+  long fsize = ftell(fp);
+  rewind(fp);
+
+  char *buffer = (char *)malloc(fsize + 1);
+
+  if (buffer == NULL) {
+    char *msg = "HTTP/1.1 500 Internal Server Error\r\n\r\n";
+    send(clntSock, msg, strlen(msg), 0);
+    perror("malloc failed");
+    return;
   }
+
+  fread(buffer, fsize, 1, fp);
+  buffer[fsize] = '\0';
+  fclose(fp);
+
+  send(clntSock, buffer, fsize, 0);
 }
 
 
@@ -75,4 +89,5 @@ void write_data(int clntSock, FILE *fp, char *buffer, char *filename) {
       fputc(body[i], fp);
     }
   }
+  fclose(fp);
 }
