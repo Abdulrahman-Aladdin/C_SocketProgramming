@@ -6,12 +6,11 @@
 #include <arpa/inet.h>
 #include "send_request.h"
 #include "error_handling.h"
+#include "handle_response.h"
 
-#define PORT 8080
-#define SERVER_IP "127.0.0.1"
 #define BUFFER_SIZE 4096
 
-struct sockaddr_in get_server_address(int portNumber, char *serverIPv4)
+struct sockaddr_in get_server_address(in_port_t portNumber, char *serverIPv4)
 {
     struct sockaddr_in server_address;
     memset(&server_address, 0, sizeof(server_address)); // Zero out structure
@@ -36,8 +35,18 @@ struct sockaddr_in get_server_address(int portNumber, char *serverIPv4)
     return server_address;
 }
 
-int main()
+int main(int argc, char *argv[])
 {
+
+    if (argc < 2 || argc > 3) // Test for correct number of arguments
+    {
+        DieWithUserMessage("Parameter(s)", "<Server Address> [<Server Port>]");
+    }
+
+    char *servIP = argv[1];
+
+    in_port_t servPort = (argc == 3) ? atoi(argv[2]) : 8080;
+
     int sock = 0;                      // integer-valued variable to hold the descriptor of the socket if creted successfully
     struct sockaddr_in server_address; // struct to hold the address information of the remote server (port number, ip address)
 
@@ -48,7 +57,7 @@ int main()
     }
     // now the socket is creted successfully and we have an integer-valued descriptor of it stored in "sock"
 
-    server_address = get_server_address(PORT, SERVER_IP); // TODO change the port number and the local IPv4 address of server
+    server_address = get_server_address(servPort, servIP); // TODO change the port number and the local IPv4 address of server
 
     // Attempt to establish a TCP connection to the server
     if (connect(sock, (struct sockaddr *)&server_address, sizeof(server_address)) < 0)
@@ -59,9 +68,17 @@ int main()
 
     //------------------Here were we send our requests and see what er get from the other side--------------
 
+    // TODO we need to process the images and then read the operations file
+    // and then check if the recieved amount of bytes is 0 or < 0
+
     // Send a GET request to the server
-    printf("Sending GET request...\n");
-    send_get_request(sock, "example_get.txt");
+    printf("Sending POST request...\n");
+
+    char *file_name = "index.html";
+
+    // send_get_request(sock, file_name);
+
+    send_post_request(sock, file_name);
 
     // Receive and print the server's response
     char buffer[BUFFER_SIZE] = {0};
@@ -69,10 +86,11 @@ int main()
     // if any message is recieved in the connection then print it and that's the server response
     recv(sock, buffer, BUFFER_SIZE, 0);
 
-    printf("Server response:\n%s\n\n", buffer);
+    printf("Server response:\n%s", buffer);
 
-    // TODO do the same for the POST request
+    handle_post_response(buffer, file_name);
+
     close(sock);
-
+    // here
     return 0;
 }
