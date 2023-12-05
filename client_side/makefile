@@ -1,5 +1,5 @@
-output: client.o error_handling.o send_request.o handle_response.o
-	gcc client.o error_handling.o send_request.o handle_response.o -o output
+my_client: client.o error_handling.o send_request.o handle_response.o
+	gcc client.o error_handling.o send_request.o handle_response.o -o my_client
 
 client.o: client.c
 	gcc -c client.c
@@ -14,7 +14,7 @@ handle_response.o: handle_response.c handle_response.h
 	gcc -c handle_response.c	
 
 clean:
-	rm *.o output
+	rm *.o my_client
 
 # out:
 # 	gcc client.c error_handling.c handle_response.c send_request.c -o out

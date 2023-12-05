@@ -9,6 +9,7 @@
 #include "handle_response.h"
 
 #define BUFFER_SIZE 1024
+#define MAX_LINE_LENGTH 256
 
 struct sockaddr_in get_server_address(in_port_t portNumber, char *serverIPv4)
 {
@@ -33,6 +34,69 @@ struct sockaddr_in get_server_address(in_port_t portNumber, char *serverIPv4)
     }
     // if we got here then we've created the server address successfully
     return server_address;
+}
+
+void handle_commands(int sock)
+{
+    FILE *file = fopen("commands.txt", "r");
+    if (file == NULL)
+    {
+        perror("Error opening file");
+        exit(1);
+    }
+
+    char line[MAX_LINE_LENGTH];
+    while (fgets(line, sizeof(line), file) != NULL)
+    {
+        char method[MAX_LINE_LENGTH];
+        char filename[MAX_LINE_LENGTH];
+
+        // Use sscanf to parse the line and extract method and filename
+        if (sscanf(line, "%s %s", method, filename) == 2)
+        {
+            if (strcmp(method, "GET") == 0)
+            {
+                // then it's a POST
+                send_get_request(sock, filename);
+
+                char buffer[BUFFER_SIZE] = {0};
+                size_t numBytes = recv(sock, buffer, BUFFER_SIZE, 0);
+                if (numBytes < 0)
+                {
+                    DieWithSystemMessage("recv() failed");
+                }
+                else if (numBytes == 0)
+                {
+                    DieWithUserMessage("recv()", "connection closed prematurely");
+                }
+                handle_get_response(buffer, filename, sock, numBytes);
+            }
+            else
+            {
+                // then it's a POST
+                send_post_request(sock, filename);
+
+                char buffer[BUFFER_SIZE] = {0};
+                size_t numBytes = recv(sock, buffer, BUFFER_SIZE, 0);
+                if (numBytes < 0)
+                {
+                    DieWithSystemMessage("recv() failed");
+                }
+                else if (numBytes == 0)
+                {
+                    DieWithUserMessage("recv()", "connection closed prematurely");
+                }
+                handle_post_response(buffer, filename);
+            }
+        }
+        else
+        {
+            printf("Invalid line format: %s", line);
+            exit(1);
+        }
+    }
+
+    fclose(file);
 }
 
 int main(int argc, char *argv[])
@@ -68,29 +132,9 @@ int main(int argc, char *argv[])
 
     //------------------Here were we send our requests and see what er get from the other side--------------
 
-    // TODO we need to process the images and then read the operations file
-    // and then check if the recieved amount of bytes is 0 or < 0
-
-    // Send a GET request to the server
-    printf("Sending GET request...\n");
-
-    char *file_name = "index.png";
-
-    send_get_request(sock, file_name);
-
-    // Receive and print the server's response
-    char buffer[BUFFER_SIZE] = {0};
-
-    // if any message is recieved in the connection then print it and that's the server response
-    size_t numBytes = recv(sock, buffer, BUFFER_SIZE, 0);
-
-    printf("data recieved size = %zu\n", numBytes);
-
-    printf("Server response:\n%s", buffer);
-
-    handle_get_response(buffer, file_name, sock);
+    handle_commands(sock);
 
     close(sock);
-    // here
+
     return 0;
 }

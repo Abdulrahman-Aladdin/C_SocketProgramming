@@ -11,9 +11,10 @@
 #include "params_struct.h"
 #include "utils.h"
 
-#define BUFFER_SIZE 16384
+#define BUFFER_SIZE 1024
 
-void *handleClient(void *args) {
+void *handleClient(void *args)
+{
   struct params *params = (struct params *)args;
   int clntSock = params->clntSock;
   pthread_detach(pthread_self()); // Detach thread
@@ -24,7 +25,8 @@ void *handleClient(void *args) {
   FD_SET(clntSock, &readfds);
   int result = select(clntSock + 1, &readfds, NULL, NULL, params->timeout);
 
-  if (result < 0) {
+  if (result < 0)
+  {
     perror("select() failed");
     decrement_active_clients(params->activeClients);
     update_timeout(params->timeout, *(params->activeClients));
@@ -32,7 +34,8 @@ void *handleClient(void *args) {
     return NULL;
   }
 
-  if (result == 0) {
+  if (result == 0)
+  {
     printf("Client %d timed out\n", clntSock);
     decrement_active_clients(params->activeClients);
     update_timeout(params->timeout, *(params->activeClients));
@@ -40,9 +43,10 @@ void *handleClient(void *args) {
     return NULL;
   }
 
-  ssize_t numBytesRcvd = recv(clntSock, buffer, BUFSIZ, 0);
-  
-  if (numBytesRcvd < 0) {
+  ssize_t numBytesRcvd = recv(clntSock, buffer, BUFFER_SIZE, 0);
+
+  if (numBytesRcvd < 0)
+  {
     decrement_active_clients(params->activeClients);
     update_timeout(params->timeout, *(params->activeClients));
     perror("recv() failed");
@@ -50,7 +54,8 @@ void *handleClient(void *args) {
     return NULL;
   }
 
-  if (numBytesRcvd == 0) {
+  if (numBytesRcvd == 0)
+  {
     printf("Client %d closed connection\n", clntSock);
     decrement_active_clients(params->activeClients);
     update_timeout(params->timeout, *(params->activeClients));
@@ -58,42 +63,54 @@ void *handleClient(void *args) {
     return NULL;
   }
 
-  while (numBytesRcvd > 0) {
+  while (numBytesRcvd > 0)
+  {
     printf("timeout -> %ld\n", params->timeout->tv_sec);
     buffer[numBytesRcvd] = '\0';
     printf("Received from client %d: %s\n", clntSock, buffer);
     char command[5];
     sscanf(buffer, "%4s", command);
 
-    if (strcmp(command, "quit") == 0) {
+    if (strcmp(command, "quit") == 0)
+    {
       printf("Client %d closed connection\n", clntSock);
       break;
-    } else if (strcmp(command, "GET") == 0) {
+    }
+    else if (strcmp(command, "GET") == 0)
+    {
       handleGET(clntSock, buffer);
-    } else if (strcmp(command, "POST") == 0) {
-      handlePOST(clntSock, buffer);
-    } else {
+    }
+    else if (strcmp(command, "POST") == 0)
+    {
+      handlePOST(clntSock, buffer, numBytesRcvd);
+    }
+    else
+    {
       printf("Invalid command: %s\n", command);
     }
 
     result = select(clntSock + 1, &readfds, NULL, NULL, params->timeout);
 
-    if (result < 0) {
+    if (result < 0)
+    {
       perror("select() failed");
       break;
     }
 
-    if (result == 0) {
+    if (result == 0)
+    {
       printf("Client %d timed out\n", clntSock);
       break;
     }
 
     numBytesRcvd = recv(clntSock, buffer, BUFSIZ, 0);
-    if (numBytesRcvd < 0) {
+    if (numBytesRcvd < 0)
+    {
       perror("recv() failed");
       break;
     }
-    if (numBytesRcvd == 0) {
+    if (numBytesRcvd == 0)
+    {
       printf("Client %d closed connection\n", clntSock);
       break;
     }

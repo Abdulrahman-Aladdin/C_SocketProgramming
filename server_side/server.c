@@ -13,23 +13,25 @@
 #include "params_struct.h"
 #include "utils.h"
 
-static const int MAXPENDING = 5;    // Maximum outstanding connection requests
+static const int MAXPENDING = 5; // Maximum outstanding connection requests
 
-struct sockaddr_in get_sockAddr_in(int port) {
-  struct sockaddr_in servAddr; // Local address
-  memset(&servAddr, 0, sizeof(servAddr)); // Zero out structure
-  servAddr.sin_family = AF_INET; // IPv4 address family
+struct sockaddr_in get_sockAddr_in(int port)
+{
+  struct sockaddr_in servAddr;                  // Local address
+  memset(&servAddr, 0, sizeof(servAddr));       // Zero out structure
+  servAddr.sin_family = AF_INET;                // IPv4 address family
   servAddr.sin_addr.s_addr = htonl(INADDR_ANY); // Any incoming interface
-  servAddr.sin_port = htons(port); // Local port
+  servAddr.sin_port = htons(port);              // Local port
   return servAddr;
 }
 
-int main (int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
   if (argc != 2) // Test for correct number of arguments
     DieWithUserMessage("Parameter(s)", "<Server Port>");
 
   in_port_t servPort = atoi(argv[1]); // First arg: local port
-  int servSock; // Socket descriptor for server
+  int servSock;                       // Socket descriptor for server
   if ((servSock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
     DieWithSystemMessage("socket() failed");
 
@@ -37,7 +39,7 @@ int main (int argc, char *argv[]) {
   struct sockaddr_in servAddr = get_sockAddr_in(servPort);
 
   // Bind to the local address
-  if (bind(servSock, (struct sockaddr*) &servAddr, sizeof(servAddr)) < 0)
+  if (bind(servSock, (struct sockaddr *)&servAddr, sizeof(servAddr)) < 0)
     DieWithSystemMessage("bind() failed");
 
   // Mark the socket so it will listen for incoming connections
@@ -47,7 +49,8 @@ int main (int argc, char *argv[]) {
   int activeClients = 0;
   struct timeval timeout;
 
-  while (1) {
+  while (1)
+  {
 
     puts("Waiting for client to connect...");
 
@@ -56,8 +59,9 @@ int main (int argc, char *argv[]) {
     socklen_t clntAddrLen = sizeof(clntAddr);
 
     // Wait for a client to connect
-    int clntSock = accept(servSock, (struct sockaddr *) &clntAddr, &clntAddrLen);
-    if (clntSock < 0) {
+    int clntSock = accept(servSock, (struct sockaddr *)&clntAddr, &clntAddrLen);
+    if (clntSock < 0)
+    {
       perror("accept() failed");
       continue;
     }
@@ -74,21 +78,23 @@ int main (int argc, char *argv[]) {
 
     update_timeout(&timeout, activeClients);
 
-    struct params *args = (struct params *) malloc(sizeof(struct params));
+    struct params *args = (struct params *)malloc(sizeof(struct params));
     args->clntSock = clntSock;
     args->timeout = &timeout;
     args->activeClients = &activeClients;
 
     pthread_t threadID;
-    int returnValue = pthread_create(&threadID, NULL, handleClient,(void *) args);
-    if (returnValue != 0) {
+    int returnValue = pthread_create(&threadID, NULL, handleClient, (void *)args);
+    if (returnValue != 0)
+    {
       perror("pthread_create() failed");
       activeClients--;
       close(clntSock);
       continue;
     }
 
-    if (pthread_detach(threadID) != 0) {
+    if (pthread_detach(threadID) != 0)
+    {
       perror("pthread_detach() failed");
       activeClients--;
       close(clntSock);

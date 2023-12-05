@@ -13,7 +13,7 @@ void send_get_request(int socket, const char *file_path)
 {
     char get_request[BUFFER_SIZE];
     // Format the GET request ended by /r/n/r/n double CRLFs to indicate the end of the request line and headers
-    sprintf(get_request, "GET /%s HTTP/1.1\r\n\r\n", file_path);
+    sprintf(get_request, "GET %s HTTP/1.1\r\n\r\n", file_path);
 
     // send the data over the TCP socket
     ssize_t bytes_sent = send(socket, get_request, strlen(get_request), 0);
@@ -52,8 +52,8 @@ void send_post_request(int socket, const char *filename)
     FILE *file = fopen(filename, "rb");
     if (file == NULL)
     {
-        perror("Error opening file");
-        return;
+        perror("Error opening file, or maybe the file doesn't exist");
+        exit(1);
     }
 
     // Determine the file size
@@ -64,7 +64,7 @@ void send_post_request(int socket, const char *filename)
     // Construct and send the HTTP POST request headers
     char headers[BUFFER_SIZE];
     snprintf(headers, sizeof(headers),
-             "POST /%s HTTP/1.1\r\n"
+             "POST %s HTTP/1.1\r\n"
              "Content-Type: %s\r\n"
              "Content-Length: %ld\r\n"
              "\r\n",

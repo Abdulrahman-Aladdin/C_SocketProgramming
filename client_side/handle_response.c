@@ -7,15 +7,6 @@
 
 #define BUFFER_SIZE 1024
 
-// void printHex(const char *data, size_t size)
-// {
-//     for (size_t i = 0; i < size; ++i)
-//     {
-//         printf("%02X ", (unsigned char)data[i]);
-//     }
-//     printf("\n");
-// }
-
 int extractHeaderValue(const char *response, const char *headerField, size_t *value)
 {
     const char *headerStart = strstr(response, headerField);
@@ -44,7 +35,7 @@ int extractHeaderValue(const char *response, const char *headerField, size_t *va
 }
 
 // function to handle the GET response
-void handle_get_response(char *response, char *file_name, int sock)
+void handle_get_response(char *response, char *file_name, int sock, size_t responseLength)
 {
     // either OK or NOT FOUND
     const char *found = strstr(response, "HTTP/1.1 200 OK");
@@ -63,10 +54,17 @@ void handle_get_response(char *response, char *file_name, int sock)
     {
         DieWithUserMessage("extractHeaderValue()", "invalid first response format");
     }
-    // here means that we got out content_length value successfully
 
-    unsigned int totalBytesRcvd = 0;
+    // pointer to point to the start of the data
+    char *initially_recieved = strstr(response, "\r\n\r\n") + 4;
 
+    // this gives the exact size of the initially recieved data in that are sent along with the headers
+    unsigned int initially_recieved_length = responseLength - (initially_recieved - response);
+
+    // prepare the totalBytesRecieved such that we now got the initial data
+    unsigned int totalBytesRcvd = initially_recieved_length;
+
+    // let's open the file to right the data to it
     FILE *fp = fopen(file_name, "wb");
 
     if (fp == NULL)
@@ -74,11 +72,13 @@ void handle_get_response(char *response, char *file_name, int sock)
         DieWithSystemMessage("Error opening the file for writing");
     }
 
+    // write the initially recieved data
+    fwrite(initially_recieved, 1, initially_recieved_length, fp);
+
     while (totalBytesRcvd < content_length)
     {
         char buffer[BUFFER_SIZE];
         size_t numBytes = recv(sock, buffer, BUFFER_SIZE, 0);
-
         if (numBytes < 0)
             DieWithSystemMessage("recv() failed");
 
