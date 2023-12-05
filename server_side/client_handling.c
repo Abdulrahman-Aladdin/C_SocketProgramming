@@ -65,7 +65,6 @@ void *handleClient(void *args)
 
   while (numBytesRcvd > 0)
   {
-    printf("timeout -> %ld\n", params->timeout->tv_sec);
     buffer[numBytesRcvd] = '\0';
     printf("Received from client %d: %s\n", clntSock, buffer);
     char command[5];

@@ -2,3 +2,4 @@ GET index.html
 GET index.png
 GET index.txt
 GET index.jpeg
+POST pindex.txt

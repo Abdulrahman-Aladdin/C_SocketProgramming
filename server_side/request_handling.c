@@ -14,8 +14,8 @@ void send_data(int clntSock, char *filename);
 void handleGET(int clntSock, char *buffer)
 {
   char filename[MAX_FILE_NAME];
-  sscanf(buffer, "GET %s", filename);
-  printf("GET %s\n", filename);
+  sscanf(buffer, "GET /%s", filename);
+  // printf("GET %s\n", filename);
   FILE *fp = fopen(filename, "rb");
   if (fp == NULL)
   {
@@ -59,8 +59,8 @@ int extractHeaderValue(const char *response, const char *headerField, size_t *va
 void handlePOST(int clntSock, char *buffer, size_t bytesRecievedInitially)
 {
   char filename[MAX_FILE_NAME];
-  sscanf(buffer, "%*s %s", filename);
-  printf("POST %s\n", filename);
+  sscanf(buffer, "POST /%s", filename);
+  // printf("POST %s\n", filename);
 
   size_t content_length;
 
@@ -145,8 +145,8 @@ void send_data(int clntSock, char *filename)
            content_type, file_size);
 
   // the first send(the one that contains the header and the request line)
-  printf("Headers is: %s\n", headers);
-  printf("the header length is: %zu", strlen(headers));
+  // printf("Headers is: %s\n", headers);
+  // printf("the header length is: %zu", strlen(headers));
   ssize_t bytes_sent = send(clntSock, headers, strlen(headers), 0);
 
   if (bytes_sent == -1)
@@ -167,8 +167,8 @@ void send_data(int clntSock, char *filename)
 
   while ((bytes_read = fread(buffer, 1, sizeof(buffer), file)) > 0)
   {
-    printf("bytes read = %zu\n", bytes_read);
-    printf("buffer is: %s\n", buffer);
+    // printf("bytes read = %zu\n", bytes_read);
+    // printf("buffer is: %s\n", buffer);
     ssize_t bytes_sent = send(clntSock, buffer, bytes_read, 0);
     if (bytes_sent == -1)
     {

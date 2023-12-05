@@ -74,7 +74,7 @@ int main(int argc, char *argv[])
       puts("Unable to get client address");
 
     activeClients++;
-    printf("Active clients: %d\n", activeClients);
+    printf("...Active clients -> %d\n", activeClients);
 
     update_timeout(&timeout, activeClients);
 
